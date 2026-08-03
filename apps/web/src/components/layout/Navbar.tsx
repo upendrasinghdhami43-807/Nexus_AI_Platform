@@ -1,8 +1,8 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { ModelSelector } from '@/components/chat/ModelSelector'
-import { Share2, Ghost, Copy, Check, X, Globe, Link2, Twitter, Linkedin, Mail, Lock } from 'lucide-react'
+import { Share2, Ghost, Copy, Check, X, Link2, Twitter, Mail } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 
 interface NavbarProps {
@@ -14,8 +14,14 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [includeUsername, setIncludeUsername] = useState(false)
+  const [shareableUrl, setShareableUrl] = useState('https://nexus-ai.platform/share/chat-992182')
 
-  const shareableUrl = `https://nexus-ai.platform/share/chat-${Math.random().toString(36).substring(2, 9)}`
+  useEffect(() => {
+    // Generate a client-side stable link when modal opens
+    if (isShareModalOpen) {
+      setShareableUrl(`https://nexus-ai.platform/share/chat-${Math.random().toString(36).substring(2, 9)}`)
+    }
+  }, [isShareModalOpen])
 
   const handleCopyLink = () => {
     navigator.clipboard.writeText(shareableUrl)

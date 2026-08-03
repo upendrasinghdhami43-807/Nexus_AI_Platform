@@ -1,7 +1,7 @@
 'use client'
 
-import React from 'react'
-import { Copy, Bot, User as UserIcon, Globe, FileText, ExternalLink, Check } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { Copy, Bot, User as UserIcon, Globe, FileText, ExternalLink, Check, Volume2, VolumeX, Square } from 'lucide-react'
 import { AttachedFile } from './ChatInput'
 
 export interface SearchSource {
@@ -28,12 +28,50 @@ export function MessageBubble({
   webSearchSources,
 }: MessageBubbleProps) {
   const isUser = role === 'user'
-  const [copied, setCopied] = React.useState(false)
+  const [copied, setCopied] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
+
+  useEffect(() => {
+    return () => {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+    }
+  }, [])
 
   const handleCopy = () => {
     navigator.clipboard.writeText(content)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleReadAloud = () => {
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) return
+
+    if (isPlaying) {
+      window.speechSynthesis.cancel()
+      setIsPlaying(false)
+      return
+    }
+
+    window.speechSynthesis.cancel()
+
+    // Clean text of markdown formatting for natural speech
+    const cleanText = content
+      .replace(/```[\s\S]*?```/g, 'Code block omitted.')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+      .replace(/[*_#~]/g, '')
+
+    const utterance = new SpeechSynthesisUtterance(cleanText)
+    utterance.rate = 1.0
+    utterance.pitch = 1.0
+
+    utterance.onend = () => setIsPlaying(false)
+    utterance.onerror = () => setIsPlaying(false)
+
+    setIsPlaying(true)
+    window.speechSynthesis.speak(utterance)
   }
 
   return (
@@ -104,17 +142,40 @@ export function MessageBubble({
 
         {/* Footer Actions */}
         {!isUser && (
-          <div className="flex items-center gap-3 mt-1 text-[11px] text-text-muted px-1">
+          <div className="flex items-center gap-3.5 mt-1 text-[11px] text-text-muted px-1">
             <span>{model || 'Gemini 3.5 Flash'}</span>
+
+            {/* Read Aloud TTS Button */}
+            <button
+              onClick={handleReadAloud}
+              aria-label={isPlaying ? 'Stop Reading' : 'Read Aloud'}
+              className={`flex items-center gap-1 font-medium transition-colors ${
+                isPlaying ? 'text-accent-primary animate-pulse' : 'hover:text-text-primary'
+              }`}
+            >
+              {isPlaying ? (
+                <>
+                  <Square className="w-3 h-3 fill-accent-primary" />
+                  <span>Stop</span>
+                </>
+              ) : (
+                <>
+                  <Volume2 className="w-3 h-3 text-accent-primary" />
+                  <span>Read Aloud</span>
+                </>
+              )}
+            </button>
+
+            {/* Copy Button */}
             <button
               onClick={handleCopy}
               aria-label="Copy response"
-              className="flex items-center gap-1 hover:text-text-primary transition-colors"
+              className="flex items-center gap-1 hover:text-text-primary transition-colors font-medium"
             >
               {copied ? (
                 <>
-                  <Check className="w-3 h-3 text-green-400" />
-                  <span className="text-green-400">Copied</span>
+                  <Check className="w-3 h-3 text-emerald-400" />
+                  <span className="text-emerald-400">Copied</span>
                 </>
               ) : (
                 <>
