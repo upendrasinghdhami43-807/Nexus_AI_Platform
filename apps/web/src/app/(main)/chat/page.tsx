@@ -3,7 +3,8 @@
 import React, { useState } from 'react'
 import { ChatInput, AttachedFile } from '@/components/chat/ChatInput'
 import { MessageBubble, SearchSource } from '@/components/chat/MessageBubble'
-import { Sparkles, Code, FileSearch, PenTool, Terminal } from 'lucide-react'
+import { Sparkles, Code, FileSearch, PenTool, Terminal, Ghost, Info } from 'lucide-react'
+import { useUIStore } from '@/stores/uiStore'
 
 interface Message {
   role: 'user' | 'assistant'
@@ -15,6 +16,7 @@ interface Message {
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const { isTemporaryChat } = useUIStore()
 
   const handleSend = (text: string, attachments: AttachedFile[], webSearch: boolean) => {
     const userMsg: Message = {
@@ -42,11 +44,6 @@ export default function ChatPage() {
             title: 'Next.js 15 App Router & Server Components',
             url: 'https://nextjs.org/docs/app',
             snippet: 'Optimized production build with server actions and streaming support.',
-          },
-          {
-            title: 'Nexus AI Platform Open Source Repo',
-            url: 'https://github.com/nexus-ai/platform',
-            snippet: 'Enterprise multi-LLM workspace with free web proxies.',
           },
         ]
         aiContent = `Here are the latest web search findings for "${text}":\n\n1. **Real-time Web Integration**: Nexus AI retrieved live web sources.\n2. **Synthesis**: Based on recent data, the request was processed with up-to-date documentation and code samples.\n\nLet me know if you would like me to deep dive into any specific result!`
@@ -77,7 +74,19 @@ export default function ChatPage() {
   ]
 
   return (
-    <div className="flex flex-col h-full justify-between max-w-4xl mx-auto px-4 py-6">
+    <div className="flex flex-col h-full justify-between max-w-4xl mx-auto px-4 py-4 relative">
+      {/* Temporary Chat Notice Banner */}
+      {isTemporaryChat && (
+        <div className="mb-2 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs flex items-center justify-between shadow-md animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <Ghost className="w-4 h-4 text-purple-400 animate-pulse flex-shrink-0" />
+            <span>
+              <strong>Temporary Chat Active</strong> — Messages in this session won&apos;t be saved to chat history or used to train models.
+            </span>
+          </div>
+        </div>
+      )}
+
       {messages.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 my-auto">
           <div className="w-16 h-16 rounded-2xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center text-accent-primary shadow-lg">
