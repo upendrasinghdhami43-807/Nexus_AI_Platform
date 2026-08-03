@@ -1,0 +1,17 @@
+# Ignore Nexus AI documentation folder
+docs/
+
+# Environment and secrets
+.env
+.env.local
+*.log
+
+# Node dependencies
+node_modules/
+.next/
+
+# Python / Virtualenv
+__pycache__/
+*.pyc
+venv/
+.venv/
