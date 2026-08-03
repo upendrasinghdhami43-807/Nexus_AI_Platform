@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react'
 import { ModelSelector } from '@/components/chat/ModelSelector'
+import { ThemeToggle } from '@/components/shared/ThemeToggle'
 import { Share2, Ghost, Copy, Check, X, Link2, Twitter, Mail } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 
@@ -17,7 +18,6 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
   const [shareableUrl, setShareableUrl] = useState('https://nexus-ai.platform/share/chat-992182')
 
   useEffect(() => {
-    // Generate a client-side stable link when modal opens
     if (isShareModalOpen) {
       setShareableUrl(`https://nexus-ai.platform/share/chat-${Math.random().toString(36).substring(2, 9)}`)
     }
@@ -43,7 +43,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           {/* Temporary Chat Toggle */}
           <button
             onClick={toggleTemporaryChat}
@@ -59,7 +59,11 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
             <span className="hidden sm:inline">Temporary</span>
           </button>
 
+          {/* Model Selector */}
           <ModelSelector />
+
+          {/* Light / Dark / Device Theme Selector */}
+          <ThemeToggle />
 
           {/* Share Button */}
           <button

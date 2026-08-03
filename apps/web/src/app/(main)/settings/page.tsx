@@ -1,10 +1,12 @@
 'use client'
 
 import React, { useState } from 'react'
-import { Settings, Key, Cpu, Globe, Shield, Save, Check, RefreshCw, Trash2 } from 'lucide-react'
+import { Settings, Key, Cpu, Globe, Shield, Save, Check, Trash2, Sun, Moon, Laptop } from 'lucide-react'
+import { useTheme } from 'next-themes'
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = useState<'models' | 'proxy' | 'privacy'>('models')
+  const { theme, setTheme } = useTheme()
+  const [activeTab, setActiveTab] = useState<'models' | 'theme' | 'proxy' | 'privacy'>('models')
   const [saved, setSaved] = useState(false)
 
   const [geminiApiKey, setGeminiApiKey] = useState('AIzaSyD-mock-gemini-key-992182')
@@ -29,15 +31,16 @@ export default function SettingsPage() {
             Workspace Settings
           </h1>
           <p className="text-sm text-text-secondary mt-1">
-            Configure free Gemini Web Proxy endpoints, model API keys, and workspace preferences.
+            Configure free Gemini Web Proxy endpoints, model API keys, theme appearance, and workspace preferences.
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-border-subtle pb-2">
+      <div className="flex items-center gap-2 border-b border-border-subtle pb-2 overflow-x-auto">
         {[
           { id: 'models', label: 'AI Models & Keys', icon: Key },
+          { id: 'theme', label: 'Theme & Appearance', icon: Sun },
           { id: 'proxy', label: 'Web Search & Proxy', icon: Globe },
           { id: 'privacy', label: 'Data & Storage', icon: Shield },
         ].map((tab) => {
@@ -47,7 +50,7 @@ export default function SettingsPage() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all ${
+              className={`px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 transition-all whitespace-nowrap ${
                 isActive
                   ? 'bg-accent-primary text-white shadow-md'
                   : 'text-text-secondary hover:text-text-primary hover:bg-bg-surface'
@@ -107,6 +110,76 @@ export default function SettingsPage() {
                   onChange={(e) => setAutoStream(e.target.checked)}
                   className="w-5 h-5 accent-accent-primary rounded cursor-pointer"
                 />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'theme' && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="text-base font-bold text-text-primary flex items-center gap-2">
+                <Sun className="w-5 h-5 text-amber-500" />
+                Theme & Device Appearance
+              </h3>
+              <p className="text-xs text-text-muted mt-0.5">
+                Choose your preferred interface theme or sync automatically with your device system preferences.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <div
+                onClick={() => setTheme('light')}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                  theme === 'light'
+                    ? 'border-amber-500 bg-amber-500/10 shadow-lg'
+                    : 'border-border-default bg-bg-base hover:border-border-strong'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <Sun className="w-6 h-6 text-amber-500" />
+                  {theme === 'light' && <Check className="w-5 h-5 text-amber-500" />}
+                </div>
+                <div>
+                  <div className="font-bold text-text-primary text-sm">Light Mode</div>
+                  <div className="text-xs text-text-muted mt-0.5">High clarity light aesthetic</div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setTheme('dark')}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                  theme === 'dark'
+                    ? 'border-purple-500 bg-purple-500/10 shadow-lg'
+                    : 'border-border-default bg-bg-base hover:border-border-strong'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <Moon className="w-6 h-6 text-purple-400" />
+                  {theme === 'dark' && <Check className="w-5 h-5 text-purple-400" />}
+                </div>
+                <div>
+                  <div className="font-bold text-text-primary text-sm">Dark Mode</div>
+                  <div className="text-xs text-text-muted mt-0.5">Sleek dark glassmorphic theme</div>
+                </div>
+              </div>
+
+              <div
+                onClick={() => setTheme('system')}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer space-y-3 ${
+                  theme === 'system'
+                    ? 'border-accent-primary bg-accent-primary/10 shadow-lg'
+                    : 'border-border-default bg-bg-base hover:border-border-strong'
+                }`}
+              >
+                <div className="flex items-center justify-between">
+                  <Laptop className="w-6 h-6 text-accent-secondary" />
+                  {theme === 'system' && <Check className="w-5 h-5 text-accent-primary" />}
+                </div>
+                <div>
+                  <div className="font-bold text-text-primary text-sm">System / Device</div>
+                  <div className="text-xs text-text-muted mt-0.5">Syncs with OS theme settings</div>
+                </div>
               </div>
             </div>
           </div>
