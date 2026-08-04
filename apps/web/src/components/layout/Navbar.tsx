@@ -3,15 +3,20 @@
 import React, { useState, useEffect } from 'react'
 import { ModelSelector } from '@/components/chat/ModelSelector'
 import { ThemeToggle } from '@/components/shared/ThemeToggle'
-import { Share2, Ghost, Copy, Check, X, Link2, Twitter, Mail } from 'lucide-react'
+import { Share2, Ghost, Copy, Check, X, Link2, Twitter, Mail, Menu, SquarePen, Sparkles } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
+import { useChatStore } from '@/stores/chatStore'
+import { useRouter } from 'next/navigation'
 
 interface NavbarProps {
   title?: string
 }
 
 export function Navbar({ title = 'New Conversation' }: NavbarProps) {
-  const { isTemporaryChat, toggleTemporaryChat } = useUIStore()
+  const { isTemporaryChat, toggleTemporaryChat, toggleMobileSidebar } = useUIStore()
+  const { createChat } = useChatStore()
+  const router = useRouter()
+
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const [copiedLink, setCopiedLink] = useState(false)
   const [includeUsername, setIncludeUsername] = useState(false)
@@ -29,50 +34,81 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
     setTimeout(() => setCopiedLink(false), 2000)
   }
 
+  const handleNewChat = () => {
+    const newId = createChat()
+    router.push(`/chat?id=${newId}`)
+  }
+
   return (
     <>
-      <header className="h-14 border-b border-border-subtle bg-bg-base/80 backdrop-blur-md flex items-center justify-between px-6 sticky top-0 z-20">
-        <div className="flex items-center gap-3">
-          <h1 className="font-semibold text-sm text-text-primary truncate max-w-xs md:max-w-md flex items-center gap-2">
-            {title}
-            {isTemporaryChat && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[11px] font-semibold border border-purple-500/30">
-                <Ghost className="w-3 h-3 text-purple-400 animate-pulse" /> Temporary Chat
-              </span>
-            )}
-          </h1>
+      <header className="h-14 border-b border-border-subtle bg-bg-surface/90 backdrop-blur-md flex items-center justify-between px-3 md:px-5 sticky top-0 z-20 select-none">
+        {/* Left Side: Mobile Menu Hamburger & Model Selector */}
+        <div className="flex items-center gap-2">
+          {/* Mobile Drawer Hamburger Button */}
+          <button
+            onClick={toggleMobileSidebar}
+            aria-label="Open Navigation Drawer"
+            className="lg:hidden p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-overlay transition-colors"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+
+          {/* Model Selector Dropdown (ChatGPT style) */}
+          <ModelSelector />
+
+          {isTemporaryChat && (
+            <span className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[11px] font-semibold border border-purple-500/30">
+              <Ghost className="w-3 h-3 text-purple-400 animate-pulse" /> Temporary Chat
+            </span>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Right Side Actions: Upgrade Pill, New Chat, Share, Theme Toggle */}
+        <div className="flex items-center gap-1.5 md:gap-2">
+          {/* Upgrade Pill Button (ChatGPT Screenshot 1 & 2 Style) */}
+          <button
+            onClick={() => router.push('/settings')}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-500/10 hover:bg-blue-500/20 text-blue-500 text-xs font-semibold border border-blue-500/30 transition-all shadow-xs"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-blue-500 fill-blue-500" />
+            <span>Upgrade</span>
+          </button>
+
+          {/* New Chat Icon Button (Mobile visible) */}
+          <button
+            onClick={handleNewChat}
+            aria-label="New Chat"
+            title="Start new conversation"
+            className="lg:hidden p-2 rounded-xl text-text-secondary hover:text-text-primary hover:bg-bg-overlay transition-colors"
+          >
+            <SquarePen className="w-5 h-5" />
+          </button>
+
           {/* Temporary Chat Toggle */}
           <button
             onClick={toggleTemporaryChat}
             aria-label="Toggle Temporary Chat Mode"
-            title={isTemporaryChat ? 'Disable Temporary Chat' : 'Enable Temporary Chat (Incognito Mode)'}
-            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all border ${
+            title={isTemporaryChat ? 'Disable Temporary Chat' : 'Enable Temporary Chat'}
+            className={`hidden md:flex p-2 rounded-xl text-xs font-medium items-center gap-1.5 transition-all border ${
               isTemporaryChat
-                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40 shadow-sm'
+                ? 'bg-purple-500/20 text-purple-300 border-purple-500/40'
                 : 'text-text-secondary hover:text-text-primary hover:bg-bg-overlay border-border-subtle'
             }`}
           >
-            <Ghost className={`w-3.5 h-3.5 ${isTemporaryChat ? 'text-purple-400' : ''}`} />
-            <span className="hidden sm:inline">Temporary</span>
+            <Ghost className={`w-4 h-4 ${isTemporaryChat ? 'text-purple-400' : ''}`} />
           </button>
 
-          {/* Model Selector */}
-          <ModelSelector />
-
-          {/* Light / Dark / Device Theme Selector */}
+          {/* Theme Toggle */}
           <ThemeToggle />
 
           {/* Share Button */}
           <button
             onClick={() => setIsShareModalOpen(true)}
             aria-label="Share Conversation"
-            className="px-3 py-1.5 rounded-lg bg-accent-primary/15 hover:bg-accent-primary text-accent-primary hover:text-white transition-all border border-accent-primary/30 flex items-center gap-1.5 text-xs font-medium shadow-sm"
+            className="hidden sm:flex px-3 py-1.5 rounded-xl bg-bg-elevated hover:bg-bg-overlay text-text-primary transition-all border border-border-subtle items-center gap-1.5 text-xs font-medium"
           >
             <Share2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Share</span>
+            <span>Share</span>
           </button>
         </div>
       </header>
@@ -80,7 +116,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
       {/* Share Chat Modal */}
       {isShareModalOpen && (
         <div className="fixed inset-0 z-50 bg-black/75 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-          <div className="glass-panel w-full max-w-md p-6 rounded-2xl border border-border-default space-y-5 shadow-2xl bg-bg-surface">
+          <div className="glass-panel w-full max-w-md p-6 rounded-3xl border border-border-default space-y-5 shadow-2xl bg-bg-surface">
             <div className="flex items-center justify-between border-b border-border-subtle pb-3">
               <div className="flex items-center gap-2 text-text-primary font-bold text-base">
                 <Share2 className="w-5 h-5 text-accent-primary" />
@@ -88,7 +124,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
               </div>
               <button
                 onClick={() => setIsShareModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-bg-overlay text-text-muted hover:text-text-primary"
+                className="p-1.5 rounded-xl hover:bg-bg-overlay text-text-muted hover:text-text-primary"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -99,7 +135,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
             </p>
 
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-3 rounded-xl bg-bg-base border border-border-subtle text-xs">
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-bg-base border border-border-subtle text-xs">
                 <span className="text-text-primary font-medium">Include user handle in link</span>
                 <input
                   type="checkbox"
@@ -114,11 +150,11 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
                   type="text"
                   readOnly
                   value={shareableUrl}
-                  className="w-full bg-bg-base border border-border-default rounded-xl pl-3 pr-24 py-2.5 text-xs text-text-primary font-mono select-all focus:outline-none"
+                  className="w-full bg-bg-base border border-border-default rounded-2xl pl-3 pr-24 py-2.5 text-xs text-text-primary font-mono select-all focus:outline-none"
                 />
                 <button
                   onClick={handleCopyLink}
-                  className="absolute right-1.5 px-3 py-1.5 rounded-lg bg-accent-primary hover:bg-accent-primary/90 text-white font-medium text-xs flex items-center gap-1 shadow-md transition-all"
+                  className="absolute right-1.5 px-3 py-1.5 rounded-xl bg-accent-primary hover:bg-accent-primary/90 text-white font-medium text-xs flex items-center gap-1 shadow-md transition-all"
                 >
                   {copiedLink ? (
                     <>
@@ -141,7 +177,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
                 onClick={() => handleCopyLink()}
                 className="flex flex-col items-center gap-1 text-[10px] hover:text-accent-primary transition-colors"
               >
-                <div className="p-2.5 rounded-xl bg-bg-base border border-border-subtle hover:border-accent-primary/40">
+                <div className="p-2.5 rounded-2xl bg-bg-base border border-border-subtle hover:border-accent-primary/40">
                   <Link2 className="w-4 h-4" />
                 </div>
                 <span>Copy Link</span>
@@ -153,7 +189,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
                 rel="noreferrer"
                 className="flex flex-col items-center gap-1 text-[10px] hover:text-accent-secondary transition-colors"
               >
-                <div className="p-2.5 rounded-xl bg-bg-base border border-border-subtle hover:border-accent-secondary/40">
+                <div className="p-2.5 rounded-2xl bg-bg-base border border-border-subtle hover:border-accent-secondary/40">
                   <Twitter className="w-4 h-4" />
                 </div>
                 <span>Post on X</span>
@@ -163,7 +199,7 @@ export function Navbar({ title = 'New Conversation' }: NavbarProps) {
                 href={`mailto:?subject=Nexus%20AI%20Conversation&body=Here%20is%20a%20link%20to%20the%20chat:%20${encodeURIComponent(shareableUrl)}`}
                 className="flex flex-col items-center gap-1 text-[10px] hover:text-emerald-400 transition-colors"
               >
-                <div className="p-2.5 rounded-xl bg-bg-base border border-border-subtle hover:border-emerald-400/40">
+                <div className="p-2.5 rounded-2xl bg-bg-base border border-border-subtle hover:border-emerald-400/40">
                   <Mail className="w-4 h-4" />
                 </div>
                 <span>Email Link</span>

@@ -1,7 +1,20 @@
 'use client'
 
-import React, { useState, useRef } from 'react'
-import { Send, Paperclip, Globe, X, FileText, Image as ImageIcon, FileCode, CheckCircle2 } from 'lucide-react'
+import React, { useState, useRef, useEffect } from 'react'
+import { 
+  ArrowUp, 
+  Plus, 
+  Globe, 
+  X, 
+  FileText, 
+  Image as ImageIcon, 
+  FileCode, 
+  Mic, 
+  AudioLines, 
+  Sparkles,
+  Paperclip,
+  Check
+} from 'lucide-react'
 
 export interface AttachedFile {
   id: string
@@ -19,7 +32,31 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [isWebSearchActive, setIsWebSearchActive] = useState(false)
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
+  const [isMenuOpen, setIsMenuOpen] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const menuRef = useRef<HTMLDivElement>(null)
+
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`
+    }
+  }, [input])
+
+  // Close + menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setIsMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [])
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return
@@ -31,6 +68,7 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
       type: file.type,
     }))
     setAttachedFiles((prev) => [...prev, ...newAttachments])
+    setIsMenuOpen(false)
     if (fileInputRef.current) fileInputRef.current.value = ''
   }
 
@@ -38,18 +76,30 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
     setAttachedFiles((prev) => prev.filter((f) => f.id !== id))
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = (e?: React.FormEvent) => {
+    if (e) e.preventDefault()
     if ((!input.trim() && attachedFiles.length === 0) || isLoading) return
     onSend(input.trim(), attachedFiles, isWebSearchActive)
     setInput('')
     setAttachedFiles([])
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+    }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
-      handleSubmit(e)
+      handleSubmit()
+    }
+  }
+
+  const toggleVoiceMode = () => {
+    setIsListening(!isListening)
+    if (!isListening) {
+      // Simulate quick voice dictation placeholder
+      setInput((prev) => (prev ? prev + ' ' : '') + 'Create a responsive web component')
+      setTimeout(() => setIsListening(false), 2000)
     }
   }
 
@@ -60,8 +110,10 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
     return <FileText className="w-3.5 h-3.5 text-text-secondary" />
   }
 
+  const isCanSend = (input.trim().length > 0 || attachedFiles.length > 0) && !isLoading
+
   return (
-    <form onSubmit={handleSubmit} className="relative max-w-3xl mx-auto w-full px-4 mb-4">
+    <div className="relative max-w-3xl mx-auto w-full px-2 sm:px-4 mb-3 sm:mb-4">
       {/* Hidden File Input */}
       <input
         type="file"
@@ -72,22 +124,22 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
         accept=".txt,.pdf,.doc,.docx,.png,.jpg,.jpeg,.json,.ts,.js,.py,.csv"
       />
 
-      <div className="relative glass-panel p-3 shadow-2xl focus-within:border-accent-primary/50 transition-all rounded-2xl border border-border-default bg-bg-surface/80 backdrop-blur-xl">
-        {/* Attached Files Bar */}
+      {/* Main Pill Input Container (ChatGPT Mobile & Desktop Pill Bar) */}
+      <div className="relative bg-bg-surface/90 border border-border-default shadow-xl rounded-[28px] p-2 sm:p-2.5 transition-all focus-within:border-border-strong focus-within:shadow-2xl backdrop-blur-xl">
+        {/* Attached Files Bar inside pill */}
         {attachedFiles.length > 0 && (
-          <div className="flex flex-wrap gap-2 mb-2 pb-2 border-b border-border-subtle">
+          <div className="flex flex-wrap gap-1.5 px-2 pt-1 pb-2 mb-1 border-b border-border-subtle">
             {attachedFiles.map((file) => (
               <div
                 key={file.id}
-                className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-bg-overlay border border-border-subtle text-xs text-text-primary"
+                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-bg-elevated border border-border-subtle text-xs text-text-primary"
               >
                 {getFileIcon(file.name)}
-                <span className="truncate max-w-[140px] font-medium">{file.name}</span>
-                <span className="text-[10px] text-text-muted">({file.size})</span>
+                <span className="truncate max-w-[130px] font-medium text-xs">{file.name}</span>
                 <button
                   type="button"
                   onClick={() => removeFile(file.id)}
-                  className="p-0.5 rounded hover:bg-bg-elevated text-text-muted hover:text-text-primary transition-colors"
+                  className="p-0.5 rounded-full hover:bg-bg-overlay text-text-muted hover:text-text-primary transition-colors ml-0.5"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -96,53 +148,128 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
           </div>
         )}
 
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Ask Nexus AI anything... (Shift+Enter for new line)"
-          rows={1}
-          className="w-full bg-transparent text-sm text-text-primary placeholder:text-text-muted resize-none focus:outline-none px-2 py-1 max-h-36"
-        />
-
-        <div className="flex items-center justify-between pt-2 border-t border-border-subtle mt-1 px-1">
-          <div className="flex items-center gap-1.5">
+        {/* Input Text Area Row */}
+        <div className="flex items-center gap-2">
+          {/* Plus (+) Button & Popover Tool Menu */}
+          <div className="relative" ref={menuRef}>
             <button
               type="button"
-              onClick={() => fileInputRef.current?.click()}
-              aria-label="Attach File"
-              className="p-2 rounded-lg text-text-muted hover:text-text-primary hover:bg-bg-overlay transition-colors flex items-center gap-1.5 text-xs font-medium"
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              aria-label="Add attachment or tool"
+              className="w-9 h-9 rounded-full bg-bg-elevated hover:bg-bg-overlay text-text-secondary hover:text-text-primary flex items-center justify-center transition-colors flex-shrink-0 border border-border-subtle"
             >
-              <Paperclip className="w-4 h-4 text-accent-primary" />
-              <span className="hidden sm:inline">Attach</span>
+              <Plus className={`w-5 h-5 transition-transform duration-200 ${isMenuOpen ? 'rotate-45' : ''}`} />
             </button>
 
+            {/* Plus Popover Menu */}
+            {isMenuOpen && (
+              <div className="absolute bottom-12 left-0 w-56 rounded-2xl bg-bg-surface border border-border-default shadow-2xl z-50 p-1.5 space-y-1 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  <Paperclip className="w-4 h-4 text-accent-primary" />
+                  <span>Upload File / Document</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsWebSearchActive(!isWebSearchActive)
+                    setIsMenuOpen(false)
+                  }}
+                  className="w-full flex items-center justify-between px-3 py-2 rounded-xl text-xs font-medium text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  <div className="flex items-center gap-2.5">
+                    <Globe className={`w-4 h-4 ${isWebSearchActive ? 'text-accent-secondary' : 'text-text-muted'}`} />
+                    <span>Search the web</span>
+                  </div>
+                  {isWebSearchActive && <Check className="w-3.5 h-3.5 text-accent-secondary" />}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setInput('Create an image: ')
+                    setIsMenuOpen(false)
+                  }}
+                  className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-text-primary hover:bg-bg-elevated transition-colors"
+                >
+                  <ImageIcon className="w-4 h-4 text-purple-400" />
+                  <span>Create an image</span>
+                </button>
+              </div>
+            )}
+          </div>
+
+          {/* Flexible Textarea */}
+          <textarea
+            ref={textareaRef}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Ask anything"
+            rows={1}
+            className="flex-1 bg-transparent text-sm sm:text-base text-text-primary placeholder:text-text-muted placeholder:font-normal resize-none focus:outline-none py-1.5 px-1 max-h-40 leading-normal"
+          />
+
+          {/* Right Action Icons: Web Search Badge, Voice/Mic, Send Button */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
+            {/* Active Web Search Badge Pill */}
+            {isWebSearchActive && (
+              <button
+                type="button"
+                onClick={() => setIsWebSearchActive(false)}
+                className="hidden sm:flex items-center gap-1 px-2.5 py-1 rounded-full bg-accent-secondary/15 text-accent-secondary border border-accent-secondary/30 text-[11px] font-semibold"
+              >
+                <Globe className="w-3 h-3 animate-pulse" />
+                <span>Search</span>
+                <X className="w-3 h-3 hover:text-text-primary" />
+              </button>
+            )}
+
+            {/* Mic Button */}
             <button
               type="button"
-              onClick={() => setIsWebSearchActive(!isWebSearchActive)}
-              aria-label="Toggle Web Search"
-              className={`px-2.5 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-all ${
-                isWebSearchActive
-                  ? 'bg-accent-primary/20 text-accent-primary border border-accent-primary/40 shadow-sm'
+              onClick={toggleVoiceMode}
+              aria-label="Voice Input"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                isListening
+                  ? 'bg-rose-500/20 text-rose-500 animate-pulse border border-rose-500/30'
                   : 'text-text-muted hover:text-text-primary hover:bg-bg-overlay'
               }`}
             >
-              <Globe className={`w-4 h-4 ${isWebSearchActive ? 'text-accent-primary animate-pulse' : ''}`} />
-              <span>Web Search</span>
-              {isWebSearchActive && <CheckCircle2 className="w-3 h-3 text-accent-primary" />}
+              <Mic className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Voice Waveform / Audio Button (ChatGPT style) */}
+            <button
+              type="button"
+              onClick={toggleVoiceMode}
+              aria-label="Audio Mode"
+              className="w-9 h-9 rounded-full bg-text-primary text-bg-base flex items-center justify-center hover:opacity-90 transition-opacity"
+            >
+              <AudioLines className="w-4.5 h-4.5" />
+            </button>
+
+            {/* Solid Round Send Button (ChatGPT Upward Arrow Circle) */}
+            <button
+              type="button"
+              onClick={() => handleSubmit()}
+              disabled={!isCanSend}
+              aria-label="Send Message"
+              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                isCanSend
+                  ? 'bg-accent-primary text-white shadow-md active:scale-95 cursor-pointer'
+                  : 'bg-bg-elevated text-text-muted opacity-40 cursor-not-allowed border border-border-subtle'
+              }`}
+            >
+              <ArrowUp className="w-5 h-5 stroke-[2.5]" />
             </button>
           </div>
-
-          <button
-            type="submit"
-            disabled={(!input.trim() && attachedFiles.length === 0) || isLoading}
-            aria-label="Send Message"
-            className="p-2.5 rounded-xl bg-accent-primary hover:bg-accent-primary/90 text-white disabled:opacity-40 disabled:cursor-not-allowed transition-all shadow-lg flex items-center justify-center"
-          >
-            <Send className="w-4 h-4" />
-          </button>
         </div>
       </div>
-    </form>
+    </div>
   )
 }

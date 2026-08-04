@@ -3,7 +3,7 @@
 import React, { useState } from 'react'
 import { ChatInput, AttachedFile } from '@/components/chat/ChatInput'
 import { MessageBubble, SearchSource } from '@/components/chat/MessageBubble'
-import { Sparkles, Code, FileSearch, PenTool, Terminal, Ghost, Info } from 'lucide-react'
+import { Sparkles, Code, Globe, Image as ImageIcon, Edit3, X, Ghost } from 'lucide-react'
 import { useUIStore } from '@/stores/uiStore'
 
 interface Message {
@@ -16,6 +16,12 @@ interface Message {
 export default function ChatPage() {
   const [messages, setMessages] = useState<Message[]>([])
   const [isLoading, setIsLoading] = useState(false)
+  const [suggestions, setSuggestions] = useState([
+    { id: '1', title: 'Create an image', icon: ImageIcon, prompt: 'Create an image of a futuristic workspace with modern glass interface' },
+    { id: '2', title: 'Write or edit', icon: Edit3, prompt: 'Help me draft an architectural proposal for a React Next.js web application' },
+    { id: '3', title: 'Search the web', icon: Globe, prompt: 'What are the latest updates in AI models and web frameworks in 2026?' },
+  ])
+
   const { isTemporaryChat } = useUIStore()
 
   const handleSend = (text: string, attachments: AttachedFile[], webSearch: boolean) => {
@@ -28,7 +34,7 @@ export default function ChatPage() {
     setMessages((prev) => [...prev, userMsg])
     setIsLoading(true)
 
-    // Simulate response stream with real file analysis or web search context
+    // Simulate response stream
     setTimeout(() => {
       let aiContent = ''
       let sources: SearchSource[] | undefined = undefined
@@ -36,7 +42,7 @@ export default function ChatPage() {
       if (webSearch) {
         sources = [
           {
-            title: 'Gemini 1.5 Pro & Web RAG API Documentation',
+            title: 'Gemini 3.5 Pro & Web RAG API Documentation',
             url: 'https://ai.google.dev/docs/gemini_web_api',
             snippet: 'Real-time web browsing and information retrieval via Nexus AI platform proxy.',
           },
@@ -51,7 +57,7 @@ export default function ChatPage() {
         const fileNames = attachments.map((f) => f.name).join(', ')
         aiContent = `I have analyzed the uploaded file(s): **${fileNames}**.\n\n- **Extracted Content**: File structural parse complete.\n- **Summary**: Key technical specifications and data definitions have been indexed into the current session context.\n\nHow would you like me to process or transform this data?`
       } else {
-        aiContent = `I received your prompt: "${text}".\n\nI am connected to the free Gemini Proxy endpoint. I can assist with code generation, technical architecture, data analysis, or web research.`
+        aiContent = `I received your prompt: "${text}".\n\nI am connected to the Nexus AI engine. I can assist with code generation, technical architecture, content drafting, or web research.`
       }
 
       setMessages((prev) => [
@@ -63,60 +69,60 @@ export default function ChatPage() {
         },
       ])
       setIsLoading(false)
-    }, 1000)
+    }, 900)
   }
 
-  const promptSuggestions = [
-    { title: 'Write a Python script', desc: 'FastAPI streaming endpoint example', icon: Code },
-    { title: 'Analyze a PDF file', desc: 'Extract key insights using RAG', icon: FileSearch },
-    { title: 'Draft a blog post', desc: 'SEO-optimized content generator', icon: PenTool },
-    { title: 'Explain a concept', desc: 'Quantum computing in simple terms', icon: Terminal },
-  ]
+  const dismissSuggestion = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setSuggestions((prev) => prev.filter((item) => item.id !== id))
+  }
 
   return (
-    <div className="flex flex-col h-full justify-between max-w-4xl mx-auto px-4 py-4 relative">
+    <div className="flex flex-col h-full justify-between max-w-4xl mx-auto px-3 sm:px-4 py-2 relative">
       {/* Temporary Chat Notice Banner */}
       {isTemporaryChat && (
-        <div className="mb-2 p-3 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs flex items-center justify-between shadow-md animate-fadeIn">
+        <div className="mb-2 p-3 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-300 text-xs flex items-center justify-between shadow-xs animate-fadeIn">
           <div className="flex items-center gap-2">
             <Ghost className="w-4 h-4 text-purple-400 animate-pulse flex-shrink-0" />
             <span>
-              <strong>Temporary Chat Active</strong> — Messages in this session won&apos;t be saved to chat history or used to train models.
+              <strong>Temporary Chat Active</strong> — Messages in this session won&apos;t be saved to chat history.
             </span>
           </div>
         </div>
       )}
 
+      {/* Main Chat Area */}
       {messages.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center space-y-8 my-auto">
-          <div className="w-16 h-16 rounded-2xl bg-accent-primary/10 border border-accent-primary/20 flex items-center justify-center text-accent-primary shadow-lg">
-            <Sparkles className="w-8 h-8" />
-          </div>
-
-          <div>
-            <h2 className="text-2xl font-bold text-text-primary">What do you want to build today?</h2>
-            <p className="text-sm text-text-secondary mt-1">Select a suggested prompt or type your own request below.</p>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full max-w-2xl">
-            {promptSuggestions.map((item, idx) => {
+        <div className="flex-1 flex flex-col justify-end pb-4 space-y-4 max-w-2xl mx-auto w-full">
+          {/* Quick Action Suggestion Rows (ChatGPT Screenshot 1 Style) */}
+          <div className="space-y-2 mb-2">
+            {suggestions.map((item) => {
               const Icon = item.icon
               return (
-                <button
-                  key={idx}
-                  onClick={() => handleSend(item.title + ' — ' + item.desc, [], false)}
-                  className="p-4 rounded-xl glass-panel text-left hover:border-accent-primary/40 transition-all group shadow-md"
+                <div
+                  key={item.id}
+                  onClick={() => handleSend(item.prompt, [], item.title === 'Search the web')}
+                  className="group flex items-center justify-between px-4 py-3 rounded-2xl bg-bg-surface hover:bg-bg-elevated border border-border-subtle hover:border-border-default cursor-pointer transition-all shadow-xs"
                 >
-                  <Icon className="w-5 h-5 text-accent-primary mb-2 group-hover:scale-110 transition-transform" />
-                  <div className="text-sm font-semibold text-text-primary">{item.title}</div>
-                  <div className="text-xs text-text-muted mt-0.5">{item.desc}</div>
-                </button>
+                  <div className="flex items-center gap-3 text-xs sm:text-sm font-medium text-text-secondary group-hover:text-text-primary">
+                    <Icon className="w-4 h-4 text-text-muted group-hover:text-text-primary flex-shrink-0" />
+                    <span>{item.title}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => dismissSuggestion(item.id, e)}
+                    className="p-1 rounded-full text-text-muted hover:text-text-primary hover:bg-bg-overlay transition-colors"
+                    title="Dismiss"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               )
             })}
           </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto space-y-4 py-4">
+        <div className="flex-1 overflow-y-auto space-y-4 py-4 pr-1">
           {messages.map((msg, index) => (
             <MessageBubble
               key={index}
@@ -129,6 +135,7 @@ export default function ChatPage() {
         </div>
       )}
 
+      {/* Floating ChatGPT Pill Input Bar */}
       <ChatInput onSend={handleSend} isLoading={isLoading} />
     </div>
   )
