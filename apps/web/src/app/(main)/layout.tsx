@@ -10,9 +10,9 @@ export default function MainLayout({
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-bg-base">
       <Sidebar />
-      <div className="flex flex-col flex-1 h-full overflow-hidden">
+      <div className="flex flex-col flex-1 h-full overflow-hidden min-w-0">
         <Navbar />
-        <main className="flex-1 overflow-y-auto relative">{children}</main>
+        <main className="flex-1 flex flex-col min-h-0 overflow-hidden relative">{children}</main>
       </div>
     </div>
   )
