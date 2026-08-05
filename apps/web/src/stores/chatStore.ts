@@ -7,12 +7,15 @@ export interface Message {
   content: string
   attachments?: AttachedFile[]
   webSearchSources?: SearchSource[]
+  model?: string
 }
 
 export interface ChatSession {
-  id: string
+  id: string           // Backend conversation UUID
   title: string
+  model: string
   isPinned: boolean
+  isArchived: boolean
   updatedAt: string
   messagesCount: number
 }
@@ -21,66 +24,44 @@ interface ChatState {
   chats: ChatSession[]
   activeChatId: string | null
   messagesByChatId: Record<string, Message[]>
+  isHydrated: boolean
+
+  // Actions
+  setChats: (chats: ChatSession[]) => void
   setActiveChatId: (id: string | null) => void
+  addOrUpdateChat: (chat: ChatSession) => void
   togglePinChat: (id: string) => void
   renameChat: (id: string, newTitle: string) => void
   deleteChat: (id: string) => void
-  createChat: () => string
+  createLocalChat: () => string
   addMessageToChat: (chatId: string, message: Message) => void
+  appendToLastAssistantMessage: (chatId: string, delta: string) => void
   updateUserMessage: (chatId: string, index: number, newContent: string) => void
   clearMessages: (chatId: string) => void
+  setHydrated: () => void
 }
 
 export const useChatStore = create<ChatState>((set, get) => ({
-  chats: [
-    {
-      id: 'c1',
-      title: 'FastAPI Streaming Architecture',
-      isPinned: true,
-      updatedAt: '10m ago',
-      messagesCount: 2,
-    },
-    {
-      id: 'c2',
-      title: 'Next.js 15 Tailwind CSS Setup',
-      isPinned: true,
-      updatedAt: '1h ago',
-      messagesCount: 2,
-    },
-    {
-      id: 'c3',
-      title: 'Python PDF RAG Extractor',
-      isPinned: false,
-      updatedAt: 'Yesterday',
-      messagesCount: 1,
-    },
-    {
-      id: 'c4',
-      title: 'Gemini Web Proxy Benchmarks',
-      isPinned: false,
-      updatedAt: '3 days ago',
-      messagesCount: 1,
-    },
-  ],
+  // ── Initial State (empty — populated from API) ───────────────────────────
+  chats: [],
   activeChatId: null,
-  messagesByChatId: {
-    c1: [
-      { role: 'user', content: 'How do I set up FastAPI streaming with server-sent events (SSE)?' },
-      { role: 'assistant', content: 'To implement SSE streaming in FastAPI, use `StreamingResponse` with an async generator:\n\n```python\nfrom fastapi import FastAPI\nfrom fastapi.responses import StreamingResponse\nimport asyncio\n\napp = FastAPI()\n\nasync def event_generator():\n    for i in range(10):\n        yield f"data: Token {i}\\n\\n"\n        await asyncio.sleep(0.2)\n\n@app.get("/stream")\nasync def stream_tokens():\n    return StreamingResponse(event_generator(), media_type="text/event-stream")\n```' },
-    ],
-    c2: [
-      { role: 'user', content: 'What are the best practices for Next.js 15 App Router styling with Tailwind CSS?' },
-      { role: 'assistant', content: '1. Use CSS variables in `globals.css` for theme tokens.\n2. Configure `tailwind.config.ts` to reference these variables.\n3. Utilize `next-themes` for seamless light/dark mode toggling without flash.' },
-    ],
-    c3: [
-      { role: 'user', content: 'Build a PDF text extraction pipeline using PyPDF and LangChain.' },
-    ],
-    c4: [
-      { role: 'user', content: 'Benchmark Gemini 3.5 Flash vs GPT-4o latency on streaming web RAG queries.' },
-    ],
-  },
+  messagesByChatId: {},
+  isHydrated: false,
+
+  setHydrated: () => set({ isHydrated: true }),
+
+  setChats: (chats) => set({ chats }),
 
   setActiveChatId: (id) => set({ activeChatId: id }),
+
+  addOrUpdateChat: (chat) =>
+    set((state) => {
+      const exists = state.chats.some((c) => c.id === chat.id)
+      if (exists) {
+        return { chats: state.chats.map((c) => (c.id === chat.id ? { ...c, ...chat } : c)) }
+      }
+      return { chats: [chat, ...state.chats] }
+    }),
 
   togglePinChat: (id) =>
     set((state) => ({
@@ -99,89 +80,92 @@ export const useChatStore = create<ChatState>((set, get) => ({
   deleteChat: (id) =>
     set((state) => {
       const nextChats = state.chats.filter((chat) => chat.id !== id)
-      const nextActiveId = state.activeChatId === id ? (nextChats[0]?.id || null) : state.activeChatId
+      const nextMessages = { ...state.messagesByChatId }
+      delete nextMessages[id]
+      const nextActiveId =
+        state.activeChatId === id ? (nextChats[0]?.id ?? null) : state.activeChatId
       return {
         chats: nextChats,
+        messagesByChatId: nextMessages,
         activeChatId: nextActiveId,
       }
     }),
 
-  createChat: () => {
-    const newId = 'c_' + Math.random().toString(36).substring(2, 9)
+  createLocalChat: () => {
+    // Creates a temporary local chat before the backend assigns a real UUID.
+    // The id will be replaced once the first SSE chunk arrives.
+    const tempId = 'tmp_' + Math.random().toString(36).slice(2, 9)
     const newChat: ChatSession = {
-      id: newId,
+      id: tempId,
       title: 'New Conversation',
+      model: 'gemini-3.5-flash',
       isPinned: false,
+      isArchived: false,
       updatedAt: 'Just now',
       messagesCount: 0,
     }
     set((state) => ({
       chats: [newChat, ...state.chats],
-      activeChatId: newId,
-      messagesByChatId: {
-        ...state.messagesByChatId,
-        [newId]: [],
-      },
+      activeChatId: tempId,
+      messagesByChatId: { ...state.messagesByChatId, [tempId]: [] },
     }))
-    return newId
+    return tempId
   },
 
   addMessageToChat: (chatId, message) =>
     set((state) => {
-      const currentMsgs = state.messagesByChatId[chatId] || []
-      const updatedMsgs = [...currentMsgs, message]
-      
-      // Auto update title if first message
+      const current = state.messagesByChatId[chatId] ?? []
+      const updated = [...current, message]
       const updatedChats = state.chats.map((chat) => {
-        if (chat.id === chatId) {
-          const firstTitle = message.role === 'user' && chat.title === 'New Conversation'
-            ? (message.content.length > 30 ? message.content.substring(0, 30) + '...' : message.content)
+        if (chat.id !== chatId) return chat
+        const autoTitle =
+          message.role === 'user' && chat.title === 'New Conversation'
+            ? message.content.length > 57
+              ? message.content.slice(0, 57) + '...'
+              : message.content
             : chat.title
-          return {
-            ...chat,
-            title: firstTitle,
-            messagesCount: updatedMsgs.length,
-            updatedAt: 'Just now',
-          }
+        return {
+          ...chat,
+          title: autoTitle,
+          messagesCount: updated.length,
+          updatedAt: 'Just now',
         }
-        return chat
       })
-
       return {
-        messagesByChatId: {
-          ...state.messagesByChatId,
-          [chatId]: updatedMsgs,
-        },
+        messagesByChatId: { ...state.messagesByChatId, [chatId]: updated },
         chats: updatedChats,
       }
     }),
 
+  appendToLastAssistantMessage: (chatId, delta) =>
+    set((state) => {
+      const current = state.messagesByChatId[chatId] ?? []
+      if (current.length === 0) return state
+      const last = current[current.length - 1]
+      if (last.role !== 'assistant') return state
+      const updated = [
+        ...current.slice(0, -1),
+        { ...last, content: last.content + delta },
+      ]
+      return { messagesByChatId: { ...state.messagesByChatId, [chatId]: updated } }
+    }),
+
   updateUserMessage: (chatId, index, newContent) =>
     set((state) => {
-      const currentMsgs = state.messagesByChatId[chatId] || []
-      if (index < 0 || index >= currentMsgs.length) return state
-
-      // Keep messages up to index, update user message at index
-      const truncated = currentMsgs.slice(0, index)
-      const updatedUserMsg: Message = {
-        ...currentMsgs[index],
-        content: newContent,
-      }
-      const newMsgs = [...truncated, updatedUserMsg]
-
+      const current = state.messagesByChatId[chatId] ?? []
+      if (index < 0 || index >= current.length) return state
+      const truncated = current.slice(0, index)
+      const updatedMsg: Message = { ...current[index], content: newContent }
       return {
         messagesByChatId: {
           ...state.messagesByChatId,
-          [chatId]: newMsgs,
+          [chatId]: [...truncated, updatedMsg],
         },
       }
     }),
 
   clearMessages: (chatId) =>
     set((state) => ({
-      messagesByChatId: {
-        ...state.messagesByChatId,
-        [chatId]: [],
-      },
+      messagesByChatId: { ...state.messagesByChatId, [chatId]: [] },
     })),
 }))

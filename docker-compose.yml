@@ -1,7 +1,7 @@
 version: '3.8'
 
 services:
-  # PostgreSQL 16 with pgvector extension
+  # ── PostgreSQL 16 with pgvector ───────────────────────────────────────────
   postgres:
     image: pgvector/pgvector:pg16
     container_name: nexus_postgres
@@ -20,15 +20,20 @@ services:
       timeout: 5s
       retries: 5
 
-  # Redis for Caching and Celery Broker
+  # ── Redis for caching & Celery broker ─────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: nexus_redis
     restart: always
     ports:
       - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
 
-  # FastAPI Backend Service
+  # ── FastAPI Backend ────────────────────────────────────────────────────────
   backend:
     build:
       context: ./backend
@@ -36,20 +41,41 @@ services:
     container_name: nexus_backend
     restart: always
     environment:
+      - ENVIRONMENT=production
       - POSTGRES_SERVER=postgres
       - POSTGRES_PORT=5432
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=nexus_ai
       - REDIS_URL=redis://redis:6379/0
-      - GEMINI_PROXY_URL=http://localhost:8081/v1
+      # ── REQUIRED: generate a strong key ──────────────────────────────────
+      # python -c "import secrets; print(secrets.token_hex(32))"
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY is required}
+      # ── REQUIRED: generate a Fernet key ──────────────────────────────────
+      # python -c "from cryptography.fernet import Fernet; print(Fernet.generate_key().decode())"
+      - FERNET_KEY=${FERNET_KEY:?FERNET_KEY is required}
+      # ── CORS: comma-separated list of frontend origins ────────────────────
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
+      # ── Gemini Proxy: set to external host or host-gateway ────────────────
+      # Option A (local dev): use host.docker.internal if proxy runs on host
+      # Option B (prod): set to your deployed proxy URL
+      - GEMINI_PROXY_URL=${GEMINI_PROXY_URL:-http://host.docker.internal:8081/v1}
+      - GEMINI_PROXY_KEY=${GEMINI_PROXY_KEY:-nexus-local-key}
+      # ── Optional paid providers ───────────────────────────────────────────
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GROQ_API_KEY=${GROQ_API_KEY:-}
+      - OLLAMA_BASE_URL=${OLLAMA_BASE_URL:-}
     ports:
       - "8000:8000"
     depends_on:
       postgres:
         condition: service_healthy
       redis:
-        condition: service_started
+        condition: service_healthy
+    extra_hosts:
+      # Allows backend container to reach services on the Docker host
+      - "host.docker.internal:host-gateway"
 
 volumes:
   postgres_data:
