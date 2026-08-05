@@ -1,10 +1,11 @@
 import uuid
-from typing import TypeVar, Generic, Type, Optional, List
+from typing import Generic, TypeVar, Type, Optional, List, Any
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, update, delete
+from sqlalchemy import select
 from app.core.database import Base
 
 ModelType = TypeVar("ModelType", bound=Base)
+
 
 class BaseRepository(Generic[ModelType]):
     def __init__(self, model: Type[ModelType]):
@@ -25,9 +26,27 @@ class BaseRepository(Generic[ModelType]):
         await db.refresh(db_obj)
         return db_obj
 
-    async def update(self, db: AsyncSession, db_obj: ModelType, obj_in: dict) -> ModelType:
+    async def update(
+        self,
+        db: AsyncSession,
+        db_obj: ModelType,
+        obj_in: dict,
+        *,
+        exclude_none: bool = False,
+    ) -> ModelType:
+        """
+        Update *db_obj* with the values from *obj_in*.
+
+        By default (exclude_none=False) ALL keys present in *obj_in* are applied,
+        including explicit None values — allowing callers to clear nullable fields.
+
+        Pass exclude_none=True to restore the old behaviour of skipping None values
+        (useful when the caller only provides changed fields and None means "not given").
+        """
         for field, value in obj_in.items():
-            if value is not None and hasattr(db_obj, field):
+            if exclude_none and value is None:
+                continue
+            if hasattr(db_obj, field):
                 setattr(db_obj, field, value)
         db.add(db_obj)
         await db.commit()
