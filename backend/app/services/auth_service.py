@@ -8,13 +8,15 @@ from app.utils.hashing import hash_password, verify_password
 from app.utils.jwt import create_access_token
 from app.models.user import User
 
+
 class AuthService:
     async def register_user(self, db: AsyncSession, data: UserRegister) -> UserRead:
+        # Email is already normalized to lowercase by schema validator
         existing = await user_repo.get_by_email(db, data.email)
         if existing:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Email address is already registered."
+                detail="This email address is already registered.",
             )
 
         hashed_pw = hash_password(data.password)
@@ -24,29 +26,41 @@ class AuthService:
             "full_name": data.full_name or data.email.split("@")[0],
             "role": "user",
             "is_active": True,
-            "is_verified": True,
+            "is_verified": False,  # require email verification in production
         }
         new_user = await user_repo.create(db, user_dict)
-        
+
         # Create default user settings
-        await settings_repo.create(db, {"user_id": new_user.id, "default_model": "gemini-3.5-flash"})
+        await settings_repo.create(db, {
+            "user_id": new_user.id,
+            "default_model": "gemini-3.5-flash",
+        })
+
         return UserRead.model_validate(new_user)
 
     async def authenticate_user(self, db: AsyncSession, data: UserLogin) -> Token:
+        # Use a generic error message to prevent user enumeration
+        invalid_credentials = HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid email or password.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
         user = await user_repo.get_by_email(db, data.email)
         if not user or not user.hashed_password:
+            raise invalid_credentials
+
+        if not user.is_active:
             raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials."
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="This account has been deactivated.",
             )
 
         if not verify_password(data.password, user.hashed_password):
-            raise HTTPException(
-                status_code=status.HTTP_401_UNAUTHORIZED,
-                detail="Invalid credentials."
-            )
+            raise invalid_credentials
 
         access_token = create_access_token(data={"sub": str(user.id), "role": user.role.value})
         return Token(access_token=access_token, token_type="bearer")
+
 
 auth_service = AuthService()
