@@ -1,19 +1,19 @@
 'use client'
 
-import React, { useState, useRef, useEffect } from 'react'
-import { 
-  ArrowUp, 
-  Plus, 
-  Globe, 
-  X, 
-  FileText, 
-  Image as ImageIcon, 
-  FileCode, 
-  Mic, 
-  AudioLines, 
-  Sparkles,
+import React, { useState, useRef, useEffect, useCallback } from 'react'
+import {
+  ArrowUp,
+  Plus,
+  Globe,
+  X,
+  FileText,
+  Image as ImageIcon,
+  FileCode,
+  Mic,
+  AudioLines,
   Paperclip,
-  Check
+  Check,
+  Square,
 } from 'lucide-react'
 
 export interface AttachedFile {
@@ -26,9 +26,10 @@ export interface AttachedFile {
 interface ChatInputProps {
   onSend: (message: string, attachments: AttachedFile[], webSearch: boolean) => void
   isLoading?: boolean
+  onStop?: () => void
 }
 
-export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
+export function ChatInput({ onSend, isLoading = false, onStop }: ChatInputProps) {
   const [input, setInput] = useState('')
   const [isWebSearchActive, setIsWebSearchActive] = useState(false)
   const [attachedFiles, setAttachedFiles] = useState<AttachedFile[]>([])
@@ -253,20 +254,31 @@ export function ChatInput({ onSend, isLoading = false }: ChatInputProps) {
               <AudioLines className="w-4.5 h-4.5" />
             </button>
 
-            {/* Solid Round Send Button (ChatGPT Upward Arrow Circle) */}
-            <button
-              type="button"
-              onClick={() => handleSubmit()}
-              disabled={!isCanSend}
-              aria-label="Send Message"
-              className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
-                isCanSend
-                  ? 'bg-accent-primary text-white shadow-md active:scale-95 cursor-pointer'
-                  : 'bg-bg-elevated text-text-muted opacity-40 cursor-not-allowed border border-border-subtle'
-              }`}
-            >
-              <ArrowUp className="w-5 h-5 stroke-[2.5]" />
-            </button>
+            {/* Stop button (shown while streaming) */}
+            {isLoading && onStop ? (
+              <button
+                type="button"
+                onClick={onStop}
+                aria-label="Stop generating"
+                className="w-9 h-9 rounded-full flex items-center justify-center bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 transition-all active:scale-95"
+              >
+                <Square className="w-4 h-4 fill-red-400" />
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => handleSubmit()}
+                disabled={!isCanSend}
+                aria-label="Send Message"
+                className={`w-9 h-9 rounded-full flex items-center justify-center transition-all ${
+                  isCanSend
+                    ? 'bg-accent-primary text-white shadow-md active:scale-95 cursor-pointer'
+                    : 'bg-bg-elevated text-text-muted opacity-40 cursor-not-allowed border border-border-subtle'
+                }`}
+              >
+                <ArrowUp className="w-5 h-5 stroke-[2.5]" />
+              </button>
+            )}
           </div>
         </div>
       </div>
