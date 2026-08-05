@@ -1,12 +1,12 @@
 import uuid
 from datetime import datetime
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel
 from typing import Optional
 from app.models.user import UserRole
 
 class UserRead(BaseModel):
     id: uuid.UUID
-    email: EmailStr
+    email: str
     full_name: Optional[str] = None
     avatar_url: Optional[str] = None
     role: UserRole
